@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  passwordHash     String
+  role             Role              @default(PARTICIPANT)
+  college          String?
+  phone            String?
+  isApproved       Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organizerProfile OrganizerProfile?
+  registrations    Registration[]
+  symposiums       Symposium[]       @relation("OrganizerSymposiums")
+}
+
+model OrganizerProfile {
+  id          String         @id @default(uuid())
+  userId      String         @unique
+  department  String
+  designation String?
+  college     String
+  phone       String
+  status      ApprovalStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Symposium {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  college     String
+  venue       String
+  startDate   DateTime
+  endDate     DateTime
+  bannerUrl   String?
+  isPublished Boolean  @default(false)
+  isApproved  Boolean  @default(true)
+  organizerId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  events      Event[]
+  organizer   User     @relation("OrganizerSymposiums", fields: [organizerId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id            String         @id @default(uuid())
+  symposiumId   String
+  title         String
+  category      String
+  description   String
+  venue         String
+  eventDate     DateTime
+  startTime     String
+  endTime       String
+  capacity      Int            @default(100)
+  fee           Float          @default(0.0)
+  eligibility   String         @default("All Students")
+  rules         String?
+  isPublished   Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  symposium     Symposium      @relation(fields: [symposiumId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+}
+
+model Registration {
+  id            String             @id @default(uuid())
+  userId        String
+  eventId       String
+  status        RegistrationStatus @default(CONFIRMED)
+  paymentStatus PaymentStatus      @default(EXEMPT)
+  ticketCode    String             @unique @default(uuid())
+  registeredAt  DateTime           @default(now())
+  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
+
+enum Role {
+  ADMIN
+  ORGANIZER
+  PARTICIPANT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  EXEMPT
+}
