@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, User, Mail, Key, Building, Phone, Briefcase, Info } from 'lucide-react';
+import { UserPlus, User, Mail, Key, Building, Phone, Briefcase, Info, Sparkles, GraduationCap, ShieldCheck } from 'lucide-react';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -47,22 +47,25 @@ export default function Register() {
 
   return (
     <div style={{ maxWidth: '520px', margin: '2rem auto' }}>
-      <div className="glass-card">
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+      <div className="glass-card" style={{ padding: '2.25rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, var(--accent-cyan) 0%, var(--primary) 100%)',
+            width: '52px',
+            height: '52px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, var(--accent-cyan) 0%, var(--primary-solid) 100%)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '0.75rem'
+            marginBottom: '1rem',
+            boxShadow: '0 0 30px var(--primary-glow)',
           }}>
             <UserPlus size={26} color="#ffffff" />
           </div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Create Account</h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Join as a Participant or Event Organizer</p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            Join the centralized symposium platform
+          </p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -70,37 +73,37 @@ export default function Register() {
         <form onSubmit={handleSubmit}>
           {/* Role Selector */}
           <div className="form-group">
-            <label className="form-label">Register As</label>
+            <label className="form-label">Select Your Role</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <button
                 type="button"
                 className={`btn ${formData.role === 'PARTICIPANT' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setFormData({ ...formData, role: 'PARTICIPANT' })}
-                style={{ justifyContent: 'center' }}
+                style={{ justifyContent: 'center', fontSize: '0.85rem', gap: '0.4rem' }}
               >
-                Participant / Student
+                <GraduationCap size={16} /> Participant
               </button>
               <button
                 type="button"
                 className={`btn ${formData.role === 'ORGANIZER' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setFormData({ ...formData, role: 'ORGANIZER' })}
-                style={{ justifyContent: 'center' }}
+                style={{ justifyContent: 'center', fontSize: '0.85rem', gap: '0.4rem' }}
               >
-                Event Organizer
+                <Building size={16} /> Event Organizer
               </button>
             </div>
           </div>
 
           {formData.role === 'ORGANIZER' && (
-            <div className="alert alert-info" style={{ fontSize: '0.825rem' }}>
-              <Info size={18} /> Organizer accounts are reviewed by Admin before full publishing rights are granted.
+            <div className="alert alert-info" style={{ fontSize: '0.82rem', marginBottom: '1.25rem' }}>
+              <Info size={16} style={{ flexShrink: 0 }} /> Organizer accounts are reviewed by Admin before full publishing rights are activated.
             </div>
           )}
 
           <div className="form-group">
             <label className="form-label">Full Name</label>
             <div style={{ position: 'relative' }}>
-              <User size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <User size={17} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 name="name"
@@ -117,7 +120,7 @@ export default function Register() {
           <div className="form-group">
             <label className="form-label">Email Address</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Mail size={17} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="email"
                 name="email"
@@ -134,7 +137,7 @@ export default function Register() {
           <div className="form-group">
             <label className="form-label">Password</label>
             <div style={{ position: 'relative' }}>
-              <Key size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Key size={17} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="password"
                 name="password"
@@ -151,7 +154,7 @@ export default function Register() {
           <div className="form-group">
             <label className="form-label">College / Institution Name</label>
             <div style={{ position: 'relative' }}>
-              <Building size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Building size={17} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 name="college"
@@ -168,7 +171,7 @@ export default function Register() {
           <div className="form-group">
             <label className="form-label">Phone Number</label>
             <div style={{ position: 'relative' }}>
-              <Phone size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Phone size={17} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 name="phone"
@@ -186,7 +189,7 @@ export default function Register() {
               <div className="form-group">
                 <label className="form-label">Department</label>
                 <div style={{ position: 'relative' }}>
-                  <Briefcase size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Briefcase size={17} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
                     type="text"
                     name="department"
@@ -214,12 +217,16 @@ export default function Register() {
             </>
           )}
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={submitting}>
-            {submitting ? <div className="spinner"></div> : `Complete Registration as ${formData.role}`}
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.75rem' }} disabled={submitting}>
+            {submitting ? <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div> : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Sparkles size={16} /> Complete Registration as {formData.role}
+              </span>
+            )}
           </button>
         </form>
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+        <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
           Already registered?{' '}
           <Link to="/login" style={{ fontWeight: 600 }}>
             Sign In

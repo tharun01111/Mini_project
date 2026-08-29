@@ -11,6 +11,7 @@ import EventDetails from './pages/EventDetails';
 import OrganizerStudio from './pages/OrganizerStudio';
 import AdminPanel from './pages/AdminPanel';
 import ParticipantDashboard from './pages/ParticipantDashboard';
+import VerifyCertificate from './pages/VerifyCertificate';
 import './styles/theme.css';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -33,6 +34,10 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/symposiums/:id" element={<SymposiumDetails />} />
             <Route path="/events/:id" element={<EventDetails />} />
+            <Route path="/verify-certificate" element={<VerifyCertificate />} />
+            <Route path="/verify-certificate/:certificateCode" element={<VerifyCertificate />} />
+            <Route path="/verify/:certificateCode" element={<VerifyCertificate />} />
+
 
             {/* Protected Routes */}
             <Route

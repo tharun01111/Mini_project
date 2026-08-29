@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Shield, Users, Building, Calendar, CheckCircle2, XCircle, Clock, Award, Activity } from 'lucide-react';
+import { Shield, Users, Building, Calendar, CheckCircle2, XCircle, Clock, Award, Activity, TrendingUp } from 'lucide-react';
 
 export default function AdminPanel() {
   const [organizers, setOrganizers] = useState([]);
@@ -9,9 +9,7 @@ export default function AdminPanel() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -30,8 +28,7 @@ export default function AdminPanel() {
   };
 
   const handleApproveStatus = async (userId, status) => {
-    setMessage('');
-    setError('');
+    setMessage(''); setError('');
     try {
       const res = await api.patch(`/admin/organizers/${userId}/approve`, { status });
       setMessage(res.data.message);
@@ -44,130 +41,108 @@ export default function AdminPanel() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
+        <div className="spinner spinner-lg"></div>
       </div>
     );
   }
 
+  const statCards = stats ? [
+    { label: 'Total Users', value: stats.totalUsers, sub: 'Registered accounts', icon: <Users size={20} />, color: 'var(--primary)', glow: 'rgba(99, 102, 241, 0.2)' },
+    { label: 'Organizers', value: stats.totalOrganizers, sub: `${stats.pendingOrganizers} Pending Approval`, icon: <Building size={20} />, color: 'var(--accent-cyan)', glow: 'rgba(6, 182, 212, 0.2)' },
+    { label: 'Symposiums', value: stats.totalSymposiums, sub: `${stats.totalEvents} Total Events`, icon: <Calendar size={20} />, color: 'var(--accent-emerald)', glow: 'rgba(16, 185, 129, 0.2)' },
+    { label: 'Registrations', value: stats.totalRegistrations, sub: 'Event registrations', icon: <TrendingUp size={20} />, color: 'var(--accent-purple)', glow: 'rgba(168, 85, 247, 0.2)' },
+  ] : [];
+
   return (
     <div>
+      {/* Header */}
       <div className="section-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <Shield size={32} color="var(--accent-amber)" />
-          <h1 className="section-title">System Administrator Dashboard</h1>
-        </div>
-        <p className="section-subtitle">Platform control center for organizer approvals, security, and symposium monitoring</p>
+        <h1 className="section-title">Admin Dashboard</h1>
+        <p className="section-subtitle">Platform control center — organizer approvals, security, and symposium monitoring</p>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
       {message && <div className="alert alert-success">{message}</div>}
 
-      {/* Analytics Metric Cards */}
+      {/* Stat Cards */}
       {stats && (
         <div className="grid-4" style={{ marginBottom: '2.5rem' }}>
-          <div className="glass-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--primary)' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>TOTAL USERS</span>
-              <Users size={20} />
+          {statCards.map((stat, i) => (
+            <div key={i} className="stat-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: stat.color }}>{stat.label}</span>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: 'var(--radius-md)',
+                  background: `${stat.glow}`, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: stat.color,
+                }}>
+                  {stat.icon}
+                </div>
+              </div>
+              <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '0.15rem', color: 'var(--text-bright)' }}>{stat.value}</h2>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{stat.sub}</span>
             </div>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginTop: '0.5rem' }}>{stats.totalUsers}</h2>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Registered accounts</span>
-          </div>
-
-          <div className="glass-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--accent-cyan)' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>ORGANIZERS</span>
-              <Building size={20} />
-            </div>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginTop: '0.5rem' }}>{stats.totalOrganizers}</h2>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{stats.pendingOrganizers} Pending Approval</span>
-          </div>
-
-          <div className="glass-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--accent-emerald)' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>SYMPOSIUMS</span>
-              <Calendar size={20} />
-            </div>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginTop: '0.5rem' }}>{stats.totalSymposiums}</h2>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{stats.totalEvents} Total Events</span>
-          </div>
-
-          <div className="glass-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--accent-purple)' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>ACTIVITY</span>
-              <Activity size={20} />
-            </div>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginTop: '0.5rem' }}>{stats.totalRegistrations}</h2>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Event Registrations</span>
-          </div>
+          ))}
         </div>
       )}
 
-      {/* Organizer Approval Review List */}
+      {/* Organizer Approval Table */}
       <div className="glass-card">
-        <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Clock size={20} color="var(--accent-amber)" /> Event Organizer Review & Approvals
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Clock size={18} color="var(--accent-amber)" /> Organizer Review & Approvals
         </h3>
 
         {organizers.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No organizer accounts found.</p>
+          <p style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>No organizer accounts found.</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+          <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.8rem', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Organizer Name</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>College / Dept</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Contact</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
+                <tr>
+                  <th>Organizer</th>
+                  <th>College / Dept</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {organizers.map((org) => {
                   const status = org.organizerProfile?.status || 'PENDING';
                   return (
-                    <tr key={org.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '1rem', fontWeight: 600, color: '#ffffff' }}>
-                        {org.name}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>{org.email}</div>
+                    <tr key={org.id}>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text-bright)', display: 'block' }}>{org.name}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{org.email}</span>
                       </td>
-
-                      <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                        {org.organizerProfile?.college || org.college}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{org.organizerProfile?.department}</div>
+                      <td>
+                        <span style={{ color: 'var(--text-muted)' }}>{org.organizerProfile?.college || org.college}</span>
+                        <br />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{org.organizerProfile?.department}</span>
                       </td>
-
-                      <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
+                      <td style={{ color: 'var(--text-muted)' }}>
                         {org.phone || org.organizerProfile?.phone || 'N/A'}
                       </td>
-
-                      <td style={{ padding: '1rem' }}>
-                        <span className={`badge ${
-                          status === 'APPROVED' ? 'badge-success' : status === 'REJECTED' ? 'badge-danger' : 'badge-warning'
-                        }`}>
+                      <td>
+                        <span className={`status-chip ${status === 'APPROVED' ? 'success' : status === 'REJECTED' ? 'danger' : 'warning'}`}>
                           {status}
                         </span>
                       </td>
-
-                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                           <button
                             onClick={() => handleApproveStatus(org.id, 'APPROVED')}
                             className="btn btn-success btn-sm"
                             disabled={status === 'APPROVED'}
-                            title="Approve Organizer"
                           >
-                            <CheckCircle2 size={14} /> Approve
+                            <CheckCircle2 size={13} /> Approve
                           </button>
-
                           <button
                             onClick={() => handleApproveStatus(org.id, 'REJECTED')}
                             className="btn btn-danger btn-sm"
                             disabled={status === 'REJECTED'}
-                            title="Reject Request"
                           >
-                            <XCircle size={14} /> Reject
+                            <XCircle size={13} /> Reject
                           </button>
                         </div>
                       </td>

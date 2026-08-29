@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import EventCard from '../components/EventCard';
-import { Calendar, MapPin, Building, User, Mail, Phone, Layers, ArrowLeft } from 'lucide-react';
+import { Calendar, MapPin, Building, User, Mail, Phone, Layers, ArrowLeft, AlertCircle } from 'lucide-react';
 
 export default function SymposiumDetails() {
   const { id } = useParams();
@@ -30,17 +30,18 @@ export default function SymposiumDetails() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
+        <div className="spinner spinner-lg"></div>
       </div>
     );
   }
 
   if (error || !symposium) {
     return (
-      <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-        <h2>Symposium Not Found</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{error}</p>
-        <Link to="/" className="btn btn-secondary">
+      <div className="empty-state" style={{ maxWidth: '600px', margin: '3rem auto' }}>
+        <AlertCircle size={48} color="var(--text-dim)" />
+        <h3>Symposium Not Found</h3>
+        <p>{error}</p>
+        <Link to="/" className="btn btn-secondary" style={{ marginTop: '1.25rem' }}>
           <ArrowLeft size={16} /> Return to Home
         </Link>
       </div>
@@ -54,16 +55,27 @@ export default function SymposiumDetails() {
     year: 'numeric',
   });
 
-  const categories = ['ALL', ...new Set(symposium.events.map((e) => e.category))];
+  const categories = ['ALL', ...new Set(symposium.events?.map((e) => e.category) || [])];
 
   const filteredEvents =
     selectedCategory === 'ALL'
-      ? symposium.events
-      : symposium.events.filter((e) => e.category === selectedCategory);
+      ? (symposium.events || [])
+      : (symposium.events || []).filter((e) => e.category === selectedCategory);
 
   return (
     <div>
-      <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+      <Link
+        to="/"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          color: 'var(--text-muted)',
+          marginBottom: '1.5rem',
+          fontWeight: 600,
+          fontSize: '0.9rem',
+        }}
+      >
         <ArrowLeft size={16} /> Back to Symposium Directory
       </Link>
 
@@ -75,58 +87,123 @@ export default function SymposiumDetails() {
           backgroundImage: symposium.bannerUrl ? `url(${symposium.bannerUrl})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundColor: '#1e293b',
-          position: 'relative'
+          backgroundColor: '#0f172a',
+          position: 'relative',
         }}>
+          {!symposium.bannerUrl && (
+            <div style={{
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(6, 182, 212, 0.15) 100%)',
+            }}>
+              <Building size={64} color="rgba(255, 255, 255, 0.12)" />
+            </div>
+          )}
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to top, rgba(9, 13, 22, 0.95) 0%, rgba(9, 13, 22, 0.3) 100%)'
+            background: 'linear-gradient(to top, var(--bg-card) 0%, rgba(6, 8, 15, 0.4) 100%)',
           }} />
         </div>
 
-        <div style={{ padding: '2rem', marginTop: '-80px', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+        <div style={{ padding: '2rem 2.25rem', marginTop: '-60px', position: 'relative' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            color: 'var(--accent-cyan)',
+            fontWeight: 700,
+            fontSize: '0.88rem',
+            marginBottom: '0.5rem',
+          }}>
             <Building size={16} /> {symposium.college}
           </div>
 
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1rem', color: '#ffffff' }}>
+          <h1 style={{
+            fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
+            fontWeight: 800,
+            marginBottom: '1rem',
+            color: 'var(--text-bright)',
+            lineHeight: 1.2,
+          }}>
             {symposium.title}
           </h1>
 
-          <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', maxWidth: '850px', marginBottom: '1.75rem' }}>
+          <p style={{
+            fontSize: '1rem',
+            color: 'var(--text-muted)',
+            maxWidth: '850px',
+            marginBottom: '1.75rem',
+            lineHeight: 1.7,
+          }}>
             {symposium.description}
           </p>
 
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '1.5rem',
+            gap: '2rem',
             paddingTop: '1.25rem',
             borderTop: '1px solid var(--border-color)',
-            fontSize: '0.9rem'
+            fontSize: '0.88rem',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Calendar size={18} color="var(--primary)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'var(--primary-surface)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)',
+              }}>
+                <Calendar size={18} />
+              </div>
               <div>
-                <span style={{ color: 'var(--text-dim)', display: 'block', fontSize: '0.75rem' }}>DATE</span>
-                <strong style={{ color: '#ffffff' }}>{startDateStr}</strong>
+                <span style={{ color: 'var(--text-dim)', display: 'block', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>DATE</span>
+                <strong style={{ color: 'var(--text-bright)' }}>{startDateStr}</strong>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <MapPin size={18} color="var(--accent-amber)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'var(--accent-amber-surface)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-amber)',
+              }}>
+                <MapPin size={18} />
+              </div>
               <div>
-                <span style={{ color: 'var(--text-dim)', display: 'block', fontSize: '0.75rem' }}>VENUE</span>
-                <strong style={{ color: '#ffffff' }}>{symposium.venue}</strong>
+                <span style={{ color: 'var(--text-dim)', display: 'block', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>VENUE</span>
+                <strong style={{ color: 'var(--text-bright)' }}>{symposium.venue}</strong>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <User size={18} color="var(--accent-emerald)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'var(--accent-emerald-surface)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-emerald)',
+              }}>
+                <User size={18} />
+              </div>
               <div>
-                <span style={{ color: 'var(--text-dim)', display: 'block', fontSize: '0.75rem' }}>ORGANIZER</span>
-                <strong style={{ color: '#ffffff' }}>{symposium.organizer?.name}</strong> ({symposium.organizer?.college})
+                <span style={{ color: 'var(--text-dim)', display: 'block', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>ORGANIZER</span>
+                <strong style={{ color: 'var(--text-bright)' }}>{symposium.organizer?.name}</strong>{' '}
+                <span style={{ color: 'var(--text-muted)' }}>({symposium.organizer?.college})</span>
               </div>
             </div>
           </div>
@@ -134,21 +211,31 @@ export default function SymposiumDetails() {
       </div>
 
       {/* Events Section */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1.75rem',
+      }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 700 }}>
-            Symposium Events ({symposium.events.length})
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 700 }}>
+            Symposium Events ({symposium.events?.length || 0})
           </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Choose from paper presentations, hackathons, coding contests, workshops and quizzes</p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+            Choose from technical events, coding contests, workshops, and quizzes
+          </p>
         </div>
 
         {/* Category Filter Pills */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`btn btn-sm ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.8rem' }}
             >
               {cat}
             </button>
@@ -157,9 +244,10 @@ export default function SymposiumDetails() {
       </div>
 
       {filteredEvents.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--text-muted)' }}>
-          <Layers size={40} color="var(--text-dim)" style={{ marginBottom: '0.75rem' }} />
+        <div className="empty-state">
+          <Layers size={40} color="var(--text-dim)" />
           <h3>No Events in this Category</h3>
+          <p>Try selecting a different category from above.</p>
         </div>
       ) : (
         <div className="grid-3">

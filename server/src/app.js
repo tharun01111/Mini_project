@@ -5,6 +5,10 @@ import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import symposiumRoutes from './routes/symposiumRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
+import registrationRoutes from './routes/registrationRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
+import certificateRoutes from './routes/certificateRoutes.js';
 
 dotenv.config();
 
@@ -19,6 +23,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/symposiums', symposiumRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/registrations', registrationRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/certificates', certificateRoutes);
+
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

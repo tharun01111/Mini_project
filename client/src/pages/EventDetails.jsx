@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, Clock, MapPin, Users, Tag, IndianRupee, ArrowLeft, CheckCircle, ShieldAlert, Sparkles } from 'lucide-react';
+import DigitalTicket from '../components/DigitalTicket';
+import PaymentModal from '../components/PaymentModal';
+import { Calendar, Clock, MapPin, Users, Tag, ArrowLeft, CheckCircle, Sparkles, AlertCircle, IndianRupee, FileText } from 'lucide-react';
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -12,11 +15,12 @@ export default function EventDetails() {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [registered, setRegistered] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
 
-  useEffect(() => {
-    fetchEvent();
-  }, [id]);
+  const [registration, setRegistration] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  useEffect(() => { fetchEvent(); }, [id]);
 
   const fetchEvent = async () => {
     try {
@@ -30,27 +34,46 @@ export default function EventDetails() {
     }
   };
 
-  const handleRegisterMock = () => {
+  const handleRegister = async () => {
     if (!user) {
-      alert('Please sign in to register for this event.');
+      alert('Please log in or create an account to register for events.');
       navigate('/login');
       return;
     }
-    setRegistered(true);
+    setRegLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        'http://localhost:5000/api/registrations/register',
+        { eventId: id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setRegistration(res.data.registration);
+      if (res.data.isPaidEvent) {
+        setShowPaymentModal(true);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to complete registration.');
+    } finally {
+      setRegLoading(false);
+    }
   };
 
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
+        <div className="spinner spinner-lg"></div>
       </div>
     );
   }
 
-  if (error || !event) {
+  if (error && !event) {
     return (
-      <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-        <h2>Event Not Found</h2>
+      <div className="empty-state">
+        <AlertCircle size={48} color="var(--text-dim)" />
+        <h3>Event Not Found</h3>
+        <p>{error}</p>
         <Link to="/" className="btn btn-secondary" style={{ marginTop: '1rem' }}>
           <ArrowLeft size={16} /> Return to Home
         </Link>
@@ -59,113 +82,133 @@ export default function EventDetails() {
   }
 
   const eventDateStr = new Date(event.eventDate).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
 
+  const infoItems = [
+    { label: 'Event Date', value: eventDateStr, icon: <Calendar size={16} />, color: 'var(--primary)' },
+    { label: 'Timings', value: `${event.startTime} — ${event.endTime}`, icon: <Clock size={16} />, color: 'var(--accent-cyan)' },
+    { label: 'Venue', value: event.venue, icon: <MapPin size={16} />, color: 'var(--accent-amber)' },
+    { label: 'Capacity', value: `${event.capacity} Seats`, icon: <Users size={16} />, color: 'var(--accent-emerald)' },
+  ];
+
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+      {/* Back Link */}
       {event.symposium && (
-        <Link to={`/symposiums/${event.symposium.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+        <Link
+          to={`/symposiums/${event.symposium.id}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+            color: 'var(--text-muted)', marginBottom: '1.5rem', fontWeight: 600, fontSize: '0.9rem',
+          }}
+        >
           <ArrowLeft size={16} /> Back to {event.symposium.title}
         </Link>
       )}
 
       <div className="glass-card" style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        {/* Category & Price */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <span className="badge badge-primary" style={{ padding: '0.4rem 0.85rem' }}>
-            <Tag size={14} /> {event.category}
+            <Tag size={13} /> {event.category}
           </span>
-          <span style={{ fontSize: '1.3rem', fontWeight: 800, color: event.fee === 0 ? 'var(--accent-emerald)' : '#ffffff' }}>
-            {event.fee === 0 ? 'FREE ENTRY' : `₹${event.fee}`}
+          <span style={{
+            fontSize: '1.4rem', fontWeight: 800,
+            color: event.fee === 0 ? 'var(--accent-emerald)' : 'var(--text-bright)',
+            display: 'flex', alignItems: 'center', gap: '2px',
+          }}>
+            {event.fee === 0 ? 'FREE ENTRY' : (<><IndianRupee size={18} />{event.fee}</>)}
           </span>
         </div>
 
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+        {/* Title */}
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-bright)' }}>
           {event.title}
         </h1>
 
-        <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: 1.7 }}>
+        {/* Description */}
+        <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: 1.7 }}>
           {event.description}
         </p>
 
         {/* Info Grid */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1.25rem',
-          padding: '1.5rem',
-          backgroundColor: 'rgba(0, 0, 0, 0.25)',
-          borderRadius: 'var(--radius-md)',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '1rem', padding: '1.25rem', borderRadius: 'var(--radius-md)',
+          background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)',
           marginBottom: '2rem',
-          border: '1px solid var(--border-color)'
         }}>
-          <div>
-            <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>EVENT DATE</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem', fontWeight: 600 }}>
-              <Calendar size={16} color="var(--primary)" /> {eventDateStr}
+          {infoItems.map((item, i) => (
+            <div key={i}>
+              <span style={{ color: 'var(--text-dim)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>
+                {item.label}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', fontWeight: 700, color: 'var(--text-bright)', fontSize: '0.92rem' }}>
+                <span style={{ color: item.color }}>{item.icon}</span> {item.value}
+              </div>
             </div>
-          </div>
-
-          <div>
-            <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>TIMINGS</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem', fontWeight: 600 }}>
-              <Clock size={16} color="var(--accent-cyan)" /> {event.startTime} - {event.endTime}
-            </div>
-          </div>
-
-          <div>
-            <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>VENUE</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem', fontWeight: 600 }}>
-              <MapPin size={16} color="var(--accent-amber)" /> {event.venue}
-            </div>
-          </div>
-
-          <div>
-            <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>SEAT CAPACITY</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem', fontWeight: 600 }}>
-              <Users size={16} color="var(--accent-emerald)" /> {event.capacity} Max Participants
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Rules and Eligibility */}
+        {/* Eligibility */}
         {event.eligibility && (
           <div style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Eligibility Criteria</h3>
-            <p style={{ color: 'var(--text-muted)' }}>{event.eligibility}</p>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-bright)' }}>
+              Eligibility Criteria
+            </h3>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.92rem' }}>{event.eligibility}</p>
           </div>
         )}
 
+        {/* Rules */}
         {event.rules && (
           <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Event Rules & Guidelines</h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-bright)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <FileText size={16} /> Event Rules & Guidelines
+            </h3>
             <div style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              padding: '1.25rem',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-muted)',
-              whiteSpace: 'pre-line',
-              fontSize: '0.925rem'
+              background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)',
+              padding: '1.25rem', borderRadius: 'var(--radius-md)',
+              color: 'var(--text-muted)', whiteSpace: 'pre-line', fontSize: '0.9rem', lineHeight: 1.7,
             }}>
               {event.rules}
             </div>
           </div>
         )}
 
-        {/* Action Button */}
-        {registered ? (
-          <div className="alert alert-success" style={{ justifyContent: 'center', fontWeight: 600 }}>
-            <CheckCircle size={20} /> Registration Confirmed! Ticket code generation available in Part 4.
-          </div>
-        ) : (
-          <button onClick={handleRegisterMock} className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', justifyContent: 'center' }}>
-            <Sparkles size={20} /> Proceed to Event Registration
+        {/* Error */}
+        {error && <div className="alert alert-error">{error}</div>}
+
+        {/* Action */}
+        {!registration && (
+          <button
+            onClick={handleRegister}
+            disabled={regLoading}
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '1rem', fontSize: '1.05rem', justifyContent: 'center', fontWeight: 800 }}
+          >
+            <Sparkles size={18} /> {regLoading ? 'Processing…' : 'Register for Event Now'}
           </button>
         )}
       </div>
+
+      {registration && (
+        <div style={{ marginTop: '2rem', animation: 'slideUp 0.3s ease-out' }}>
+          <div className="alert alert-success" style={{ fontWeight: 700, marginBottom: '1.5rem', justifyContent: 'center' }}>
+            <CheckCircle size={18} /> Registration Confirmed! Your official event entry pass is ready.
+          </div>
+          <DigitalTicket registration={registration} onPay={() => setShowPaymentModal(true)} />
+        </div>
+      )}
+
+      {showPaymentModal && registration && (
+        <PaymentModal
+          registration={registration}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={(updatedReg) => setRegistration(updatedReg)}
+        />
+      )}
     </div>
   );
 }

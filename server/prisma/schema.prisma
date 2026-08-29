@@ -56,24 +56,26 @@ model Symposium {
 }
 
 model Event {
-  id            String         @id @default(uuid())
-  symposiumId   String
-  title         String
-  category      String
-  description   String
-  venue         String
-  eventDate     DateTime
-  startTime     String
-  endTime       String
-  capacity      Int            @default(100)
-  fee           Float          @default(0.0)
-  eligibility   String         @default("All Students")
-  rules         String?
-  isPublished   Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  symposium     Symposium      @relation(fields: [symposiumId], references: [id], onDelete: Cascade)
-  registrations Registration[]
+  id                   String         @id @default(uuid())
+  symposiumId          String
+  title                String
+  category             String
+  description          String
+  venue                String
+  eventDate            DateTime
+  startTime            String
+  endTime              String
+  capacity             Int            @default(100)
+  fee                  Float          @default(0.0)
+  eligibility          String         @default("All Students")
+  rules                String?
+  registrationDeadline DateTime?
+  isPublished          Boolean        @default(true)
+  isApproved           Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  symposium            Symposium      @relation(fields: [symposiumId], references: [id], onDelete: Cascade)
+  registrations        Registration[]
 }
 
 model Registration {
@@ -86,8 +88,55 @@ model Registration {
   registeredAt  DateTime           @default(now())
   event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment       Payment?
+  attendance    Attendance?
+  certificate   Certificate?
 
   @@unique([userId, eventId])
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  registrationId String        @unique
+  transactionId  String        @unique @default(uuid())
+  amount         Float
+  status         PaymentStatus @default(COMPLETED)
+  paymentDate    DateTime      @default(now())
+  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+model Attendance {
+  id             String       @id @default(uuid())
+  registrationId String       @unique
+  eventId        String
+  userId         String
+  markedAt       DateTime     @default(now())
+  markedByUserId String
+  method         String       @default("QR") // "QR" or "MANUAL"
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+model CertificateTemplate {
+  id              String   @id @default(uuid())
+  symposiumId     String?
+  eventId         String?
+  title           String   @default("Certificate of Participation")
+  contentTemplate String   @default("This is to certify that {{participantName}} has actively participated in {{eventName}} at {{symposiumName}}.")
+  signatoryName   String   @default("Convener")
+  signatoryTitle  String   @default("Event Coordinator")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Certificate {
+  id              String       @id @default(uuid())
+  certificateCode String       @unique @default(uuid())
+  registrationId  String       @unique
+  userId          String
+  eventId         String
+  issueDate       DateTime     @default(now())
+  qrCodeData      String
+  registration    Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
