@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -86,11 +84,11 @@ model Registration {
   paymentStatus PaymentStatus      @default(EXEMPT)
   ticketCode    String             @unique @default(uuid())
   registeredAt  DateTime           @default(now())
-  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payment       Payment?
   attendance    Attendance?
   certificate   Certificate?
+  payment       Payment?
+  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, eventId])
 }
@@ -112,7 +110,7 @@ model Attendance {
   userId         String
   markedAt       DateTime     @default(now())
   markedByUserId String
-  method         String       @default("QR") // "QR" or "MANUAL"
+  method         String       @default("QR")
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 

@@ -7,6 +7,7 @@ export const getAllSymposiums = async (req, res) => {
     const whereClause = {};
     if (publishedOnly === 'true' || publishedOnly === undefined) {
       whereClause.isPublished = true;
+      whereClause.isApproved = true;
     }
     if (college) {
       whereClause.college = { contains: college, mode: 'insensitive' };

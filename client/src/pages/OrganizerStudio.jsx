@@ -121,6 +121,24 @@ export default function OrganizerStudio() {
     }
   };
 
+  const handleBulkGenerateCertificates = async () => {
+    if (!selectedEventId) return;
+    setError('');
+    setSuccess('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        `http://localhost:5000/api/certificates/bulk-generate/${selectedEventId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccess(res.data.message);
+      fetchEventAttendance(selectedEventId);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error issuing batch certificates.');
+    }
+  };
+
   const handleCreateSymposium = async (e) => {
     e.preventDefault();
     setError(''); setSuccess('');
@@ -360,6 +378,16 @@ export default function OrganizerStudio() {
                     Rate: <strong>{attendanceData.stats.attendanceRate}</strong>
                   </p>
                 </div>
+
+                {attendanceData.stats.totalAttended > 0 && (
+                  <button
+                    onClick={handleBulkGenerateCertificates}
+                    className="btn btn-primary btn-sm"
+                    style={{ gap: '6px' }}
+                  >
+                    <Award size={14} /> Issue Certificates to All Attended ({attendanceData.stats.totalAttended})
+                  </button>
+                )}
               </div>
 
               {attendanceData.registrations.length === 0 ? (

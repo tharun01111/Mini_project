@@ -215,3 +215,76 @@ export const saveTemplate = async (req, res) => {
     return res.status(500).json({ message: 'Error saving certificate template.', error: error.message });
   }
 };
+
+export const bulkGenerateCertificates = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { symposium: true },
+    });
+
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    if (event.symposium.organizerId !== req.user.id && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Not authorized to issue certificates for this event.' });
+    }
+
+    // Find all confirmed registrations with recorded attendance and completed/exempt payment
+    const eligibleRegistrations = await prisma.registration.findMany({
+      where: {
+        eventId,
+        status: 'CONFIRMED',
+        paymentStatus: { in: ['COMPLETED', 'EXEMPT'] },
+        attendance: { isNot: null },
+      },
+      include: {
+        certificate: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (eligibleRegistrations.length === 0) {
+      return res.status(400).json({
+        message: 'No eligible attended participants found for this event yet.',
+        totalEligible: 0,
+        issuedCount: 0,
+      });
+    }
+
+    let newlyIssued = 0;
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
+    for (const reg of eligibleRegistrations) {
+      if (!reg.certificate) {
+        const certificateCode = `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+        const qrCodeData = `${clientUrl}/verify-certificate/${certificateCode}`;
+
+        await prisma.certificate.create({
+          data: {
+            certificateCode,
+            registrationId: reg.id,
+            userId: reg.userId,
+            eventId: reg.eventId,
+            qrCodeData,
+          },
+        });
+        newlyIssued++;
+      }
+    }
+
+    return res.json({
+      message: `Batch generation complete! ${newlyIssued} new certificate(s) issued (${eligibleRegistrations.length} total attendees eligible).`,
+      totalEligible: eligibleRegistrations.length,
+      newlyIssued,
+      previouslyIssued: eligibleRegistrations.length - newlyIssued,
+    });
+  } catch (error) {
+    console.error('Bulk generate error:', error);
+    return res.status(500).json({ message: 'Error during bulk certificate generation.', error: error.message });
+  }
+};
+
