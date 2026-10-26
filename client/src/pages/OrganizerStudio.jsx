@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import AttendanceScanner from '../components/AttendanceScanner';
 import {
@@ -34,7 +33,9 @@ export default function OrganizerStudio() {
 
   const [selectedEventId, setSelectedEventId] = useState('');
   const [attendanceData, setAttendanceData] = useState(null);
+  const [attendanceEventId, setAttendanceEventId] = useState(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [isBulkPending, setIsBulkPending] = useState(false);
 
   const [templateForm, setTemplateForm] = useState({
     title: 'Certificate of Participation',
@@ -95,11 +96,9 @@ export default function OrganizerStudio() {
     if (!eventId) return;
     setAttendanceLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5000/api/attendance/event/${eventId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/attendance/event/${eventId}`);
       setAttendanceData(res.data);
+      setAttendanceEventId(eventId);
     } catch (err) {
       console.error('Error loading event attendance roster:', err);
     } finally {
@@ -111,13 +110,26 @@ export default function OrganizerStudio() {
 
   const handleManualAttendance = async (registrationId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/attendance/manual', { registrationId }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/attendance/manual', { registrationId });
       fetchEventAttendance(selectedEventId);
     } catch (err) {
       alert(err.response?.data?.message || 'Error marking manual attendance.');
+    }
+  };
+
+  const handleBulkGenerateCertificates = async () => {
+    if (!selectedEventId || isBulkPending) return;
+    setError('');
+    setSuccess('');
+    setIsBulkPending(true);
+    try {
+      const res = await api.post(`/certificates/bulk-generate/${selectedEventId}`, {});
+      setSuccess(res.data.message);
+      fetchEventAttendance(selectedEventId);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error issuing batch certificates.');
+    } finally {
+      setIsBulkPending(false);
     }
   };
 
@@ -173,10 +185,7 @@ export default function OrganizerStudio() {
     e.preventDefault();
     setTemplateMsg('');
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/certificates/template', templateForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/certificates/template', templateForm);
       setTemplateMsg('Certificate template saved successfully!');
     } catch (err) {
       alert('Error saving certificate template.');
@@ -347,7 +356,7 @@ export default function OrganizerStudio() {
           />
 
           {/* Attendance Roster */}
-          {attendanceData && (
+          {attendanceEventId === selectedEventId && attendanceData && (
             <div className="glass-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
@@ -360,6 +369,17 @@ export default function OrganizerStudio() {
                     Rate: <strong>{attendanceData.stats.attendanceRate}</strong>
                   </p>
                 </div>
+
+                {attendanceEventId === selectedEventId && attendanceData?.stats?.totalAttended > 0 && (
+                  <button
+                    onClick={handleBulkGenerateCertificates}
+                    className="btn btn-primary btn-sm"
+                    style={{ gap: '6px' }}
+                    disabled={isBulkPending}
+                  >
+                    <Award size={14} /> {isBulkPending ? 'Issuing…' : `Issue Certificates to All Attended (${attendanceData.stats.totalAttended})`}
+                  </button>
+                )}
               </div>
 
               {attendanceData.registrations.length === 0 ? (

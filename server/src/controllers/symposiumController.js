@@ -4,7 +4,7 @@ export const getAllSymposiums = async (req, res) => {
   try {
     const { college, publishedOnly } = req.query;
 
-    const whereClause = {};
+    const whereClause = { isApproved: true };
     if (publishedOnly === 'true' || publishedOnly === undefined) {
       whereClause.isPublished = true;
     }
@@ -33,8 +33,8 @@ export const getSymposiumById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const symposium = await prisma.symposium.findUnique({
-      where: { id },
+    const symposium = await prisma.symposium.findFirst({
+      where: { id, isApproved: true },
       include: {
         organizer: {
           select: { id: true, name: true, email: true, college: true, phone: true, organizerProfile: true },

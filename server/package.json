@@ -7,19 +7,23 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "node --watch src/app.js",
+    "test": "node --test tests/api.test.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.21.1",
-    "jsonwebtoken": "^9.0.2"
+    "express-rate-limit": "^8.7.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "prisma": "^5.22.0"
+    "prisma": "^7.10.1"
   }
 }
