@@ -128,9 +128,24 @@ export const toggleUserStatus = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
+    if (user.role === 'ADMIN') {
+      return res.status(403).json({ message: 'Admin accounts cannot be toggled via this endpoint.' });
+    }
+
+    const newStatus = !user.isApproved;
+
+    const updateData = { isApproved: newStatus };
+
+    // Sync organizerProfile.status when activating/deactivating an organizer
+    if (user.role === 'ORGANIZER') {
+      updateData.organizerProfile = {
+        update: { status: newStatus ? 'APPROVED' : 'REJECTED' },
+      };
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { isApproved: !user.isApproved },
+      data: updateData,
       select: {
         id: true,
         name: true,
@@ -173,6 +188,10 @@ export const approveSymposium = async (req, res) => {
     const { id } = req.params;
     const { isApproved } = req.body;
 
+    if (typeof isApproved !== 'boolean') {
+      return res.status(400).json({ message: "'isApproved' must be a boolean (true or false)." });
+    }
+
     const symposium = await prisma.symposium.findUnique({ where: { id } });
     if (!symposium) {
       return res.status(404).json({ message: 'Symposium not found.' });
@@ -180,7 +199,7 @@ export const approveSymposium = async (req, res) => {
 
     const updated = await prisma.symposium.update({
       where: { id },
-      data: { isApproved: Boolean(isApproved) },
+      data: { isApproved },
       include: { organizer: { select: { name: true, email: true } } },
     });
 
@@ -199,6 +218,10 @@ export const approveEvent = async (req, res) => {
     const { id } = req.params;
     const { isApproved } = req.body;
 
+    if (typeof isApproved !== 'boolean') {
+      return res.status(400).json({ message: "'isApproved' must be a boolean (true or false)." });
+    }
+
     const event = await prisma.event.findUnique({ where: { id }, include: { symposium: true } });
     if (!event) {
       return res.status(404).json({ message: 'Event not found.' });
@@ -206,7 +229,7 @@ export const approveEvent = async (req, res) => {
 
     const updated = await prisma.event.update({
       where: { id },
-      data: { isApproved: Boolean(isApproved) },
+      data: { isApproved },
     });
 
     return res.json({

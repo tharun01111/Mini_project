@@ -16,6 +16,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust the single Nginx reverse-proxy hop so req.ip and rate-limiting use the real client address
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 

@@ -16,7 +16,7 @@ router.get('/verify/:certificateCode', verifyCertificatePublic);
 // Authenticated routes
 router.post('/generate', authenticate, generateCertificate);
 router.get('/my-certificates', authenticate, getMyCertificates);
-router.post('/template', authenticate, authorize(['ORGANIZER', 'ADMIN']), saveTemplate);
-router.post('/bulk-generate/:eventId', authenticate, authorize(['ORGANIZER', 'ADMIN']), bulkGenerateCertificates);
+router.post('/template', authenticate, authorize('ORGANIZER', 'ADMIN'), saveTemplate);
+router.post('/bulk-generate/:eventId', authenticate, authorize('ORGANIZER', 'ADMIN'), bulkGenerateCertificates);
 
 export default router;

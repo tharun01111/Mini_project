@@ -43,21 +43,25 @@ export default function AdminPanel() {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [orgRes, statRes, sympRes, userRes] = await Promise.all([
-        api.get('/admin/organizers'),
-        api.get('/admin/stats'),
-        api.get('/admin/symposiums'),
-        api.get('/admin/users'),
-      ]);
-      setOrganizers(orgRes.data.organizers || []);
-      setStats(statRes.data.stats || null);
-      setSymposiums(sympRes.data.symposiums || []);
-      setUsers(userRes.data.users || []);
+      await refreshData();
     } catch (err) {
       setError('Error loading administrative data.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const refreshData = async () => {
+    const [orgRes, statRes, sympRes, userRes] = await Promise.all([
+      api.get('/admin/organizers'),
+      api.get('/admin/stats'),
+      api.get('/admin/symposiums'),
+      api.get('/admin/users'),
+    ]);
+    setOrganizers(orgRes.data.organizers || []);
+    setStats(statRes.data.stats || null);
+    setSymposiums(sympRes.data.symposiums || []);
+    setUsers(userRes.data.users || []);
   };
 
   const handleApproveOrganizer = async (userId, status) => {
@@ -66,7 +70,7 @@ export default function AdminPanel() {
     try {
       const res = await api.patch(`/admin/organizers/${userId}/approve`, { status });
       setMessage(res.data.message);
-      fetchInitialData();
+      await refreshData();
     } catch (err) {
       setError(err.response?.data?.message || 'Error updating organizer approval status.');
     }
@@ -78,7 +82,7 @@ export default function AdminPanel() {
     try {
       const res = await api.patch(`/admin/symposiums/${id}/approve`, { isApproved });
       setMessage(res.data.message);
-      fetchInitialData();
+      await refreshData();
     } catch (err) {
       setError(err.response?.data?.message || 'Error updating symposium approval status.');
     }
@@ -90,7 +94,7 @@ export default function AdminPanel() {
     try {
       const res = await api.patch(`/admin/events/${id}/approve`, { isApproved });
       setMessage(res.data.message);
-      fetchInitialData();
+      await refreshData();
     } catch (err) {
       setError(err.response?.data?.message || 'Error updating event approval status.');
     }
@@ -102,7 +106,7 @@ export default function AdminPanel() {
     try {
       const res = await api.patch(`/admin/users/${userId}/status`);
       setMessage(res.data.message);
-      fetchInitialData();
+      await refreshData();
     } catch (err) {
       setError(err.response?.data?.message || 'Error updating user status.');
     }

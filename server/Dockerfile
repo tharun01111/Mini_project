@@ -18,4 +18,4 @@ EXPOSE 5000
 ENV NODE_ENV=production
 ENV PORT=5000
 
-CMD ["node", "src/app.js"]
+CMD ["sh", "-c", "until nc -z ${PGHOST:-postgres} 5432; do echo 'Waiting for PostgreSQL...'; sleep 2; done && npx prisma migrate deploy && node src/app.js"]

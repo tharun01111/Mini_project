@@ -36,7 +36,7 @@ symposium-platform/
 ## 📋 Prerequisites
 
 Make sure you have the following installed on your machine:
-- [Node.js](https://nodejs.org/) (v18.0.0 or higher)
+- [Node.js](https://nodejs.org/) (v20.19.0 or higher)
 - [npm](https://www.npmjs.com/) (bundled with Node.js)
 - [PostgreSQL](https://www.postgresql.org/) database (or Docker)
 

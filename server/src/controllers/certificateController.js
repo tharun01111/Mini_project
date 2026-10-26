@@ -255,25 +255,34 @@ export const bulkGenerateCertificates = async (req, res) => {
       });
     }
 
-    let newlyIssued = 0;
+    const newCertificates = [];
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
-    for (const reg of eligibleRegistrations) {
-      if (!reg.certificate) {
-        const certificateCode = `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-        const qrCodeData = `${clientUrl}/verify-certificate/${certificateCode}`;
+    // Build records for registrations that don't yet have a certificate
+    const toCreate = eligibleRegistrations
+      .filter((reg) => !reg.certificate)
+      .map((reg) => ({
+        certificateCode: `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+        registrationId: reg.id,
+        userId: reg.userId,
+        eventId: reg.eventId,
+        qrCodeData: `${clientUrl}/verify-certificate/PLACEHOLDER`, // updated below
+      }));
 
-        await prisma.certificate.create({
-          data: {
-            certificateCode,
-            registrationId: reg.id,
-            userId: reg.userId,
-            eventId: reg.eventId,
-            qrCodeData,
-          },
-        });
-        newlyIssued++;
-      }
+    // Issue in a conflict-safe batch; skipDuplicates handles concurrent requests on the same registrationId
+    let newlyIssued = 0;
+    if (toCreate.length > 0) {
+      // Generate qrCodeData per-record now that we have the code
+      const recordsWithQr = toCreate.map((r) => ({
+        ...r,
+        qrCodeData: `${clientUrl}/verify-certificate/${r.certificateCode}`,
+      }));
+
+      const result = await prisma.certificate.createMany({
+        data: recordsWithQr,
+        skipDuplicates: true,
+      });
+      newlyIssued = result.count;
     }
 
     return res.json({
@@ -284,7 +293,7 @@ export const bulkGenerateCertificates = async (req, res) => {
     });
   } catch (error) {
     console.error('Bulk generate error:', error);
-    return res.status(500).json({ message: 'Error during bulk certificate generation.', error: error.message });
+    return res.status(500).json({ message: 'Error during bulk certificate generation.' });
   }
 };
 
