@@ -10,17 +10,41 @@ import registrationRoutes from './routes/registrationRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
+import prisma from './config/db.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0'; // Required for Render and other PaaS platforms
 
 // Trust the single Nginx reverse-proxy hop so req.ip and rate-limiting use the real client address
 app.set('trust proxy', 1);
 
-app.use(cors());
-app.use(express.json());
+// ── CORS ──
+// In production CLIENT_URL must be your deployed frontend URL.
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow server-to-server requests (no origin) or listed origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: '2mb' }));
 
 // ── Security: Rate Limiting ──
 const generalLimiter = rateLimit({
@@ -33,7 +57,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit auth attempts
+  max: 20, // Tighter limit for auth attempts
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many authentication attempts. Please wait 15 minutes before retrying.' },
@@ -48,9 +72,31 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const duration = Date.now() - start;
     const timestamp = new Date().toISOString();
-    console.log(`[AUDIT] ${timestamp} | ${req.method} ${req.originalUrl} | Status: ${res.statusCode} | ${duration}ms | IP: ${req.ip}`);
+    // Never log Authorization header values
+    console.log(
+      `[AUDIT] ${timestamp} | ${req.method} ${req.originalUrl} | Status: ${res.statusCode} | ${duration}ms | IP: ${req.ip}`
+    );
   });
   next();
+});
+
+// ── Health Check ──
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    service: 'Unified Symposium Management Platform API',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+  });
+});
+
+// Legacy alias kept for backward compatibility
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Unified Symposium Management Platform API is running smoothly.',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ── API Route Registrations ──
@@ -63,26 +109,53 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/certificates', certificateRoutes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: 'Unified Symposium Management Platform API is running smoothly.',
-    timestamp: new Date(),
+// ── 404 Handler ──
+app.use((req, res) => {
+  res.status(404).json({ message: `Route '${req.method} ${req.originalUrl}' not found.` });
+});
+
+// ── Global Error Handler ──
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  // Do not expose stack traces in production
+  const isDev = process.env.NODE_ENV !== 'production';
+  console.error('[SERVER ERROR]', err.stack || err.message);
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error occurred.',
+    ...(isDev && { stack: err.stack }),
   });
 });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('[SERVER ERROR]', err.stack || err.message);
-  res.status(500).json({ message: 'Internal server error occurred.', error: err.message });
-});
-
+// ── Server Startup ──
 const isDirectRun = process.argv[1] && (process.argv[1].endsWith('app.js') || process.argv[1].endsWith('app'));
 if (isDirectRun && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Server running on port http://localhost:${PORT}`);
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`[SERVER] Running on http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+    console.log(`[SERVER] Allowed CORS origins: ${allowedOrigins.join(', ')}`);
   });
+
+  // ── Graceful Shutdown ──
+  const shutdown = async (signal) => {
+    console.log(`[SERVER] ${signal} received. Shutting down gracefully…`);
+    server.close(async () => {
+      try {
+        await prisma.$disconnect();
+        console.log('[SERVER] Prisma disconnected. Process exiting.');
+      } catch (e) {
+        console.error('[SERVER] Error disconnecting Prisma:', e.message);
+      }
+      process.exit(0);
+    });
+
+    // Force-exit if still alive after 10 s
+    setTimeout(() => {
+      console.error('[SERVER] Graceful shutdown timed out. Force exiting.');
+      process.exit(1);
+    }, 10_000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 export default app;

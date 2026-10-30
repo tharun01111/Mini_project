@@ -1,0 +1,50 @@
+# render.yaml — Render Declarative Infrastructure
+# Docs: https://render.com/docs/yaml-spec
+#
+# HOW TO USE:
+#   1. Push this file to your Git repo root.
+#   2. In the Render dashboard → New → Blueprint → connect your repo.
+#   3. Set sensitive env vars (DATABASE_URL, DIRECT_URL, JWT_SECRET)
+#      manually in the Render dashboard (do NOT put real values here).
+#
+# MIGRATION STRATEGY:
+#   preDeployCommand runs `prisma migrate deploy` before each new deployment
+#   goes live. It uses DIRECT_URL (direct connection, port 5432) which bypasses
+#   PgBouncer — required because ALTER TABLE / DDL statements cannot run through
+#   a transaction-mode pooler.
+#
+# WARNING: Never use `prisma migrate reset` or `prisma db push` as the
+#          preDeployCommand on a production database.
+
+services:
+  # ── Backend API (Web Service) ──────────────────────────────────────────────
+  - type: web
+    name: symposium-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    # preDeployCommand runs once per deploy, before traffic is switched over.
+    # Uses DIRECT_URL so migrations bypass PgBouncer.
+    preDeployCommand: npm run migrate:deploy
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      # Set these in the Render dashboard — do not put real values here:
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+    # Autoscaling (requires paid plan) — comment out for free tier:
+    # scaling:
+    #   minInstances: 1
+    #   maxInstances: 3
+    #   targetMemoryPercent: 60
+    #   targetCPUPercent: 60
