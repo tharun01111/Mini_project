@@ -1,39 +1,28 @@
 import axios from 'axios';
 
-// VITE_API_BASE_URL must be set to your Render backend URL during the frontend build.
-// Example: https://symposium-server.onrender.com/api
-// Falls back to "/api" for local development — Vite's dev proxy forwards /api → localhost:5000.
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
-
+// Set VITE_API_BASE_URL in your .env file:
+//   Local:      http://localhost:5000/api
+//   Production: https://symposium-server.onrender.com/api
 const api = axios.create({
-  baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 15000, // 15 second timeout
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 15000,
 });
 
-// Interceptor to attach Authorization Bearer token automatically
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Attach JWT token to every request automatically
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-// Interceptor to handle 401 responses globally (token expired / invalid)
+// On 401, clear credentials and redirect to login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear stale credentials and reload to login page
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Only redirect if not already on auth pages to avoid redirect loops
       if (
         !window.location.pathname.includes('/login') &&
         !window.location.pathname.includes('/register')
