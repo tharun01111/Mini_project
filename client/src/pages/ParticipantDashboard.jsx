@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DigitalTicket from '../components/DigitalTicket';
 import PaymentModal from '../components/PaymentModal';
@@ -45,16 +45,13 @@ export default function ParticipantDashboard() {
   const [profileMsg, setProfileMsg] = useState('');
   const [profileErr, setProfileErr] = useState('');
 
-  const token = localStorage.getItem('token');
-
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${token}` };
       const [regRes, payRes, certRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/registrations/my-registrations', { headers }),
-        axios.get('http://localhost:5000/api/payments/my-payments', { headers }),
-        axios.get('http://localhost:5000/api/certificates/my-certificates', { headers }),
+        api.get('/registrations/my-registrations'),
+        api.get('/payments/my-payments'),
+        api.get('/certificates/my-certificates'),
       ]);
       setRegistrations(regRes.data.registrations || []);
       setPayments(payRes.data.payments || []);
@@ -72,10 +69,9 @@ export default function ParticipantDashboard() {
     e.preventDefault();
     setProfileMsg(''); setProfileErr('');
     try {
-      const res = await axios.put(
-        'http://localhost:5000/api/auth/profile',
-        { name: profileName, college: profileCollege, phone: profilePhone, currentPassword: currentPassword || undefined, newPassword: newPassword || undefined },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const res = await api.put(
+        '/auth/profile',
+        { name: profileName, college: profileCollege, phone: profilePhone, currentPassword: currentPassword || undefined, newPassword: newPassword || undefined }
       );
       setProfileMsg('Profile updated successfully!');
       setUser(res.data.user);
@@ -87,14 +83,10 @@ export default function ParticipantDashboard() {
 
   const handleGenerateCertificate = async (registrationId) => {
     try {
-      const res = await axios.post(
-        'http://localhost:5000/api/certificates/generate',
-        { registrationId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await api.post('/certificates/generate', { registrationId });
       fetchDashboardData();
       const certCode = res.data.certificate.certificateCode;
-      const verifyRes = await axios.get(`http://localhost:5000/api/certificates/verify/${certCode}`);
+      const verifyRes = await api.get(`/certificates/verify/${certCode}`);
       setSelectedCertificate(verifyRes.data.certificateDetails);
     } catch (err) {
       alert(err.response?.data?.message || 'Certificate generation failed.');
@@ -306,7 +298,7 @@ export default function ParticipantDashboard() {
                           {hasCert ? (
                             <button
                               onClick={async () => {
-                                const verifyRes = await axios.get(`http://localhost:5000/api/certificates/verify/${reg.certificate.certificateCode}`);
+                                const verifyRes = await api.get(`/certificates/verify/${reg.certificate.certificateCode}`);
                                 setSelectedCertificate(verifyRes.data.certificateDetails);
                               }}
                               className="btn btn-success btn-sm"

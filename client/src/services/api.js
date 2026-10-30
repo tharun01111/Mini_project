@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// VITE_API_URL must be set to your Render backend URL during the frontend build.
+// VITE_API_BASE_URL must be set to your Render backend URL during the frontend build.
 // Example: https://symposium-server.onrender.com/api
-// Falls back to localhost for local development (Vite proxy handles /api → :5000).
-const baseURL = import.meta.env.VITE_API_URL || '/api/';
+// Falls back to "/api" for local development — Vite's dev proxy forwards /api → localhost:5000.
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const api = axios.create({
   baseURL,

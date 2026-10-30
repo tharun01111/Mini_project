@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { ShieldCheck, ShieldAlert, Search, Award, CheckCircle2, Building, Calendar, User, ArrowLeft, ExternalLink, Sparkles } from 'lucide-react';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 
@@ -18,7 +18,7 @@ export default function VerifyCertificate() {
     setSearchedCode(codeToVerify);
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/certificates/verify/${codeToVerify.trim()}`);
+      const res = await api.get(`/certificates/verify/${codeToVerify.trim()}`);
       setResult(res.data);
     } catch (err) {
       setResult({

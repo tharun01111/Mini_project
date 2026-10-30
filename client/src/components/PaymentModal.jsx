@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { CreditCard, Smartphone, Building, CheckCircle2, X, Lock, Shield, IndianRupee, Sparkles } from 'lucide-react';
 
 export default function PaymentModal({ registration, onClose, onSuccess }) {
@@ -17,17 +17,10 @@ export default function PaymentModal({ registration, onClose, onSuccess }) {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(
-        'http://localhost:5000/api/payments/process',
-        {
-          registrationId,
-          paymentMethod: method,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await api.post('/payments/process', {
+        registrationId,
+        paymentMethod: method,
+      });
 
       setCompletedPayment(res.data.payment);
       if (onSuccess) onSuccess(res.data.registration);

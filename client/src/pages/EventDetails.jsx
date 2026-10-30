@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DigitalTicket from '../components/DigitalTicket';
@@ -43,12 +42,7 @@ export default function EventDetails() {
     setRegLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(
-        'http://localhost:5000/api/registrations/register',
-        { eventId: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await api.post('/registrations/register', { eventId: id });
       setRegistration(res.data.registration);
       if (res.data.isPaidEvent) {
         setShowPaymentModal(true);

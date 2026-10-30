@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { QrCode, CheckCircle2, AlertTriangle, Search, UserCheck, Camera, X } from 'lucide-react';
 
@@ -25,17 +25,10 @@ export default function AttendanceScanner({ eventId, eventTitle }) {
     setScanResult(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(
-        'http://localhost:5000/api/attendance/scan',
-        {
-          ticketCode: cleanCode,
-          eventId: eventId || undefined,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await api.post('/attendance/scan', {
+        ticketCode: cleanCode,
+        eventId: eventId || undefined,
+      });
 
       setScanResult({
         success: true,
