@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 import QRCodeDisplay from './QRCodeDisplay';
-import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, Download, Ticket, Building, User, Sparkles, Tag, ShieldCheck, Printer } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Calendar, Clock, MapPin, CheckCircle2, AlertCircle, Ticket, Building, Sparkles, Printer, Download } from 'lucide-react';
 
 export default function DigitalTicket({ registration, onPay }) {
   if (!registration) return null;
 
-  const { event, user, status, paymentStatus, ticketCode, registeredAt } = registration;
+  const { event, user, paymentStatus, ticketCode } = registration;
   const isPaid = paymentStatus === 'COMPLETED' || paymentStatus === 'EXEMPT';
-
-  const handlePrint = () => {
-    window.print();
-  };
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   const eventDateStr = event?.eventDate
     ? new Date(event.eventDate).toLocaleDateString('en-US', {
@@ -20,6 +21,349 @@ export default function DigitalTicket({ registration, onPay }) {
         year: 'numeric',
       })
     : 'Date TBA';
+
+  useEffect(() => {
+    if (ticketCode) {
+      QRCode.toDataURL(ticketCode, {
+        width: 300,
+        margin: 1,
+        color: { dark: '#090d16', light: '#ffffff' },
+        errorCorrectionLevel: 'H',
+      })
+        .then(setQrDataUrl)
+        .catch((err) => console.error('Error generating QR data URL:', err));
+    }
+  }, [ticketCode]);
+
+  const handleDownloadPdf = async () => {
+    const ticketElement = document.getElementById('digital-ticket-print');
+    if (!ticketElement) return;
+
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(ticketElement, {
+        scale: 2.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#0d1224',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const ticketWidthMm = 175;
+      const ticketHeightMm = (canvas.height * ticketWidthMm) / canvas.width;
+      const xOffset = (pdfWidth - ticketWidthMm) / 2;
+      const yOffset = 18;
+
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, ticketWidthMm, ticketHeightMm, undefined, 'FAST');
+      pdf.save(`Ticket_${ticketCode}.pdf`);
+    } catch (err) {
+      console.error('Error generating ticket PDF:', err);
+      handlePrint();
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    let qr = qrDataUrl;
+    if (!qr && ticketCode) {
+      try {
+        qr = await QRCode.toDataURL(ticketCode, {
+          width: 300,
+          margin: 1,
+          color: { dark: '#090d16', light: '#ffffff' },
+          errorCorrectionLevel: 'H',
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    document.body.appendChild(printFrame);
+
+    const doc = printFrame.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Event Pass - ${ticketCode}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 12mm;
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+              background: #ffffff;
+              color: #0f172a;
+              display: flex;
+              justify-content: center;
+              padding-top: 15px;
+            }
+            .ticket-card {
+              width: 100%;
+              max-width: 620px;
+              background: #0d1224;
+              color: #ffffff;
+              border-radius: 18px;
+              border: 1px solid #3730a3;
+              overflow: hidden;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            }
+            .accent-bar {
+              height: 6px;
+              width: 100%;
+              background: ${isPaid ? 'linear-gradient(90deg, #10b981, #06b6d4, #6366f1)' : 'linear-gradient(90deg, #f59e0b, #ef4444)'};
+            }
+            .ticket-header {
+              padding: 18px 24px 14px 24px;
+              background: rgba(99, 102, 241, 0.08);
+              border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            .pill-symposium {
+              font-size: 10px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.06em;
+              color: #818cf8;
+              background: rgba(99, 102, 241, 0.18);
+              border: 1px solid rgba(99, 102, 241, 0.35);
+              padding: 3px 9px;
+              border-radius: 12px;
+              display: inline-block;
+            }
+            .pill-category {
+              font-size: 10px;
+              font-weight: 600;
+              color: #94a3b8;
+              background: rgba(255, 255, 255, 0.08);
+              padding: 3px 8px;
+              border-radius: 12px;
+              display: inline-block;
+              margin-left: 5px;
+            }
+            .event-title {
+              font-size: 20px;
+              font-weight: 800;
+              color: #ffffff;
+              margin: 4px 0 2px 0;
+            }
+            .college-title {
+              font-size: 12px;
+              color: #22d3ee;
+              font-weight: 600;
+            }
+            .badge-status {
+              padding: 5px 12px;
+              border-radius: 20px;
+              font-size: 10px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              background: ${isPaid ? '#064e3b' : '#78350f'};
+              color: ${isPaid ? '#34d399' : '#fbbf24'};
+              border: 1px solid ${isPaid ? '#059669' : '#d97706'};
+            }
+            .ticket-body {
+              padding: 18px 24px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 20px;
+            }
+            .ticket-details {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            }
+            .detail-row {
+              display: flex;
+              gap: 20px;
+            }
+            .detail-col {
+              flex: 1;
+            }
+            .label-text {
+              font-size: 9px;
+              color: #94a3b8;
+              text-transform: uppercase;
+              font-weight: 700;
+              letter-spacing: 0.05em;
+              margin-bottom: 2px;
+            }
+            .value-text {
+              font-size: 13px;
+              color: #ffffff;
+              font-weight: 700;
+            }
+            .participant-card {
+              background: rgba(255, 255, 255, 0.04);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-radius: 10px;
+              padding: 10px 12px;
+              margin-top: 4px;
+            }
+            .participant-name {
+              font-size: 13px;
+              font-weight: 700;
+              color: #ffffff;
+            }
+            .participant-college {
+              font-size: 11px;
+              color: #94a3b8;
+            }
+            .qr-panel {
+              background: #ffffff;
+              border-radius: 12px;
+              padding: 10px;
+              text-align: center;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+            }
+            .qr-image {
+              width: 125px;
+              height: 125px;
+              display: block;
+            }
+            .ticket-code-str {
+              font-size: 11px;
+              font-weight: 800;
+              font-family: monospace;
+              color: #0f172a;
+              margin-top: 4px;
+              letter-spacing: 0.05em;
+            }
+            .tear-line {
+              height: 16px;
+              display: flex;
+              align-items: center;
+              margin: 0 16px;
+              border-top: 2px dashed rgba(255, 255, 255, 0.15);
+            }
+            .ticket-footer {
+              padding: 12px 24px;
+              background: rgba(0, 0, 0, 0.25);
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 10px;
+              color: #94a3b8;
+            }
+            .barcode-visual {
+              display: flex;
+              align-items: center;
+              gap: 2.5px;
+              opacity: 0.6;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-card">
+            <div class="accent-bar"></div>
+            
+            <div class="ticket-header">
+              <div>
+                <div>
+                  <span class="pill-symposium">★ ${event?.symposium?.title || 'SYMPOSIUM PASS'}</span>
+                  <span class="pill-category">${event?.category || 'Technical'}</span>
+                </div>
+                <div class="event-title">${event?.title || 'Event Name'}</div>
+                <div class="college-title">🏫 ${event?.symposium?.college || 'Host Institution'}</div>
+              </div>
+              <div>
+                <span class="badge-status">${isPaid ? 'PASS CONFIRMED' : 'PAYMENT PENDING'}</span>
+              </div>
+            </div>
+
+            <div class="ticket-body">
+              <div class="ticket-details">
+                <div class="detail-row">
+                  <div class="detail-col">
+                    <div class="label-text">EVENT DATE</div>
+                    <div class="value-text">📅 ${eventDateStr}</div>
+                  </div>
+                  <div class="detail-col">
+                    <div class="label-text">SESSION TIMING</div>
+                    <div class="value-text">⏰ ${event?.startTime || '10:00 AM'} — ${event?.endTime || '01:00 PM'}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="label-text">VENUE LOCATION</div>
+                  <div class="value-text" style="font-weight: 600;">📍 ${event?.venue || 'Campus Auditorium'}</div>
+                </div>
+
+                <div class="participant-card">
+                  <div class="participant-name">${user?.name || 'Attendee'}</div>
+                  <div class="participant-college">${user?.college || 'Student Attendee'} • ${user?.email || ''}</div>
+                </div>
+              </div>
+
+              <div class="qr-panel">
+                ${qr ? `<img src="${qr}" class="qr-image" alt="QR Code" />` : ''}
+                <div class="ticket-code-str">${ticketCode}</div>
+                <div style="font-size: 9px; color: #64748b; font-weight: 700; text-transform: uppercase;">Gate Check-In QR</div>
+              </div>
+            </div>
+
+            <div class="tear-line"></div>
+
+            <div class="ticket-footer">
+              <div class="barcode-visual">
+                ${[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 4, 1, 3, 2, 4, 1, 2, 3]
+                  .map((w) => `<div style="width: ${w * 1.5}px; height: 18px; background: #ffffff; border-radius: 1px;"></div>`)
+                  .join('')}
+              </div>
+              <div style="letter-spacing: 0.04em;">Official Digital Pass • Present QR at gate for check-in</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    printFrame.contentWindow.focus();
+    setTimeout(() => {
+      printFrame.contentWindow.print();
+      setTimeout(() => {
+        if (document.body.contains(printFrame)) {
+          document.body.removeChild(printFrame);
+        }
+      }, 1500);
+    }, 250);
+  };
 
   return (
     <div className="digital-ticket-wrapper" style={{ maxWidth: '640px', margin: '0 auto' }}>
@@ -321,42 +665,29 @@ export default function DigitalTicket({ registration, onPay }) {
             )}
 
             <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="btn btn-primary btn-sm"
+              style={{ gap: '6px' }}
+            >
+              {downloading ? (
+                <div className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }}></div>
+              ) : (
+                <Download size={14} />
+              )}
+              {downloading ? 'Saving…' : 'Download PDF'}
+            </button>
+
+            <button
               onClick={handlePrint}
               className="btn btn-secondary btn-sm"
               style={{ gap: '6px' }}
             >
-              <Printer size={14} /> Print / Save PDF
+              <Printer size={14} /> Print
             </button>
           </div>
         </div>
       </div>
-
-      {/* Embedded Print Styling */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #digital-ticket-print, #digital-ticket-print * {
-            visibility: visible;
-          }
-          #digital-ticket-print {
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            max-width: 600px;
-            box-shadow: none !important;
-            border: 2px solid #000000 !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-          }
-          #digital-ticket-print h2, #digital-ticket-print span, #digital-ticket-print div {
-            color: #000000 !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

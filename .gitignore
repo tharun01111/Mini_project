@@ -1,9 +1,69 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Environment Variables (Keep examples tracked)
 .env
 .env.local
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+!.env.example
+!client/.env.example
+!server/.env.example
+
+# Production & Build Outputs
 dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# Test & Code Coverage
 coverage/
+test-results/
+.nyc_output/
+
+# Unusable / Local verification test & scratch scripts
+tests/attendance-flow.test.js
+server/tests/attendance-flow.test.js
+**/*attendance-flow*
+*.test.local.*
+*.scratch.*
+scratch/
+temp/
+tmp/
+
+# Logs
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
 prisma/dev.db
 prisma/dev.db-journal
+server/prisma/dev.db
+server/prisma/dev.db-journal
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

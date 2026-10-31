@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.post('/process', authenticate, processPayment);
 router.get('/my-payments', authenticate, getMyPayments);
-router.get('/event/:eventId', authenticate, authorize(['ORGANIZER', 'ADMIN']), getEventPayments);
+router.get('/event/:eventId', authenticate, authorize('ORGANIZER', 'ADMIN'), getEventPayments);
 
 export default router;

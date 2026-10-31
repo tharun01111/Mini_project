@@ -296,15 +296,28 @@ export default function ParticipantDashboard() {
 
                         <div>
                           {hasCert ? (
-                            <button
-                              onClick={async () => {
-                                const verifyRes = await api.get(`/certificates/verify/${reg.certificate.certificateCode}`);
-                                setSelectedCertificate(verifyRes.data.certificateDetails);
-                              }}
-                              className="btn btn-success btn-sm"
-                            >
-                              <Award size={14} /> View Certificate
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={async () => {
+                                  const verifyRes = await api.get(`/certificates/verify/${reg.certificate.certificateCode}`);
+                                  setSelectedCertificate(verifyRes.data.certificateDetails);
+                                }}
+                                className="btn btn-primary btn-sm"
+                                style={{ gap: '6px' }}
+                              >
+                                <Download size={14} /> Download PDF
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const verifyRes = await api.get(`/certificates/verify/${reg.certificate.certificateCode}`);
+                                  setSelectedCertificate(verifyRes.data.certificateDetails);
+                                }}
+                                className="btn btn-secondary btn-sm"
+                                style={{ gap: '6px' }}
+                              >
+                                <Award size={14} /> View
+                              </button>
+                            </div>
                           ) : isEligible ? (
                             <button onClick={() => handleGenerateCertificate(reg.id)} className="btn btn-primary btn-sm">
                               <Sparkles size={14} /> Generate Certificate
@@ -405,17 +418,16 @@ export default function ParticipantDashboard() {
       {/* ── Modal: Certificate ── */}
       {selectedCertificate && (
         <div className="modal-overlay" onClick={() => setSelectedCertificate(null)}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '900px', margin: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setSelectedCertificate(null)}
-              className="btn btn-secondary btn-sm"
-              style={{
-                position: 'absolute', top: '14px', right: '14px', zIndex: 30,
-                gap: '6px',
-              }}
-            >
-              <X size={16} /> Close
-            </button>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '920px', margin: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+              <button
+                onClick={() => setSelectedCertificate(null)}
+                className="btn btn-secondary btn-sm"
+                style={{ gap: '6px' }}
+              >
+                <X size={16} /> Close Certificate
+              </button>
+            </div>
             <CertificateView certificateData={selectedCertificate} />
           </div>
         </div>

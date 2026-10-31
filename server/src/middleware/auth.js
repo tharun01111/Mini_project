@@ -28,12 +28,13 @@ export const authenticate = async (req, res, next) => {
 };
 
 export const authorize = (...allowedRoles) => {
+  const roles = allowedRoles.flat();
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated.' });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         message: `Access denied. Role '${req.user.role}' is not authorized for this resource.`,
       });

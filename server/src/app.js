@@ -22,27 +22,42 @@ const HOST = '0.0.0.0'; // Required for Render and other PaaS platforms
 app.set('trust proxy', 1);
 
 // ── CORS ──
-// In production CLIENT_URL must be your deployed frontend URL.
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+// Normalized allowed origins: removes trailing slashes and handles comma-separated lists
+const configuredOrigins = (process.env.CLIENT_URL || 'http://localhost:3000,http://localhost:5173')
   .split(',')
-  .map((o) => o.trim())
+  .map((o) => o.trim().replace(/\/+$/, ''))
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow server-to-server requests (no origin) or listed origins
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin '${origin}' not allowed`));
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  })
-);
+// In development or when CLIENT_URL is not strictly isolated, ensure local dev ports work
+const allowedOrigins = [...configuredOrigins];
+if (process.env.NODE_ENV !== 'production') {
+  ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'].forEach((devOrigin) => {
+    if (!allowedOrigins.includes(devOrigin)) {
+      allowedOrigins.push(devOrigin);
+    }
+  });
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (no origin) like curl, Postman, health monitors
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = origin.replace(/\/+$/, '');
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS Blocked] Origin '${origin}' is not in allowed origins:`, allowedOrigins);
+    return callback(null, false);
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '2mb' }));
 

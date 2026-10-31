@@ -1,5 +1,37 @@
 import prisma from '../config/db.js';
 
+export function isSameInstitution(userCollege, symposiumCollege) {
+  if (!userCollege || !symposiumCollege) return false;
+  const u = userCollege.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+  const s = symposiumCollege.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+  if (u === s) return true;
+  if (u.includes(s) || s.includes(u)) return true;
+  const wordsU = u.split(/\s+/).filter((w) => w.length > 3);
+  const wordsS = s.split(/\s+/).filter((w) => w.length > 3);
+  const shared = wordsU.filter((w) => wordsS.includes(w));
+  return shared.length >= 2;
+}
+
+// Helper: verify organizer owns the event's symposium (or is ADMIN, or belongs to host college)
+async function assertOrganizerOwnsEvent(user, eventId) {
+  if (user.role === 'ADMIN') return null; // admins bypass ownership check
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: { symposium: true },
+  });
+
+  if (!event) return 'Event not found.';
+
+  // 1. Direct owner/creator
+  if (event.symposium.organizerId === user.id) return null;
+
+  // 2. Verified organizer from the same host institution
+  if (isSameInstitution(user.college, event.symposium.college)) return null;
+
+  return `Access denied. Event "${event.title}" is hosted by ${event.symposium.college}. Organizers from ${user.college || 'other institutions'} cannot record attendance for this event.`;
+}
+
 export const scanTicketAttendance = async (req, res) => {
   try {
     const { ticketCode, eventId } = req.body;
@@ -7,6 +39,10 @@ export const scanTicketAttendance = async (req, res) => {
 
     if (!ticketCode) {
       return res.status(400).json({ message: 'Ticket code is required for scanning.' });
+    }
+
+    if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Not authorized to record attendance.' });
     }
 
     const registration = await prisma.registration.findUnique({
@@ -29,9 +65,10 @@ export const scanTicketAttendance = async (req, res) => {
       });
     }
 
-    // Check organizer authorization for event
-    if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Not authorized to record attendance for this symposium event.' });
+    // Ownership check — organizer must own the symposium this event belongs to
+    const ownershipError = await assertOrganizerOwnsEvent(req.user, registration.eventId);
+    if (ownershipError) {
+      return res.status(403).json({ message: ownershipError });
     }
 
     // Check Ticket Status & Payment Status
@@ -85,6 +122,10 @@ export const markManualAttendance = async (req, res) => {
       return res.status(400).json({ message: 'Registration ID is required.' });
     }
 
+    if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Not authorized to record attendance.' });
+    }
+
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
       include: {
@@ -98,8 +139,10 @@ export const markManualAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Registration not found.' });
     }
 
-    if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Not authorized to record attendance.' });
+    // Ownership check — organizer must own the symposium this event belongs to
+    const ownershipError = await assertOrganizerOwnsEvent(req.user, registration.eventId);
+    if (ownershipError) {
+      return res.status(403).json({ message: ownershipError });
     }
 
     if (registration.attendance) {
@@ -129,6 +172,10 @@ export const getEventAttendance = async (req, res) => {
   try {
     const { eventId } = req.params;
 
+    if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Not authorized.' });
+    }
+
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: { symposium: true },
@@ -138,8 +185,10 @@ export const getEventAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Event not found.' });
     }
 
-    if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Not authorized.' });
+    // Ownership check — organizer can only view attendance for their own symposium events
+    const ownershipError = await assertOrganizerOwnsEvent(req.user, eventId);
+    if (ownershipError) {
+      return res.status(403).json({ message: ownershipError });
     }
 
     const registrations = await prisma.registration.findMany({
@@ -156,6 +205,12 @@ export const getEventAttendance = async (req, res) => {
     const totalAttended = registrations.filter((r) => r.attendance !== null).length;
 
     return res.json({
+      event: {
+        id: event.id,
+        title: event.title,
+        symposiumTitle: event.symposium.title,
+        college: event.symposium.college,
+      },
       stats: {
         totalConfirmed,
         totalAttended,

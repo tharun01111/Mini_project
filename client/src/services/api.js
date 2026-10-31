@@ -1,12 +1,24 @@
 import axios from 'axios';
 
-// Set VITE_API_BASE_URL in your .env file:
-//   Local:      http://localhost:5000/api
-//   Production: https://symposium-server.onrender.com/api
+// Resolve and normalize API base URL:
+// Handles:
+// - User entering http://localhost:5000/api
+// - User entering https://myserver.onrender.com (auto appends /api)
+// - User entering https://myserver.onrender.com/api/ (strips trailing slash)
+// - Fallback to /api in production or http://localhost:5000/api in development
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (!envUrl) {
+    return import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+  }
+  const cleanUrl = envUrl.trim().replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: getBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+  timeout: 20000,
 });
 
 // Attach JWT token to every request automatically

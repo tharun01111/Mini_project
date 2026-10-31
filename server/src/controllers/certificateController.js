@@ -229,7 +229,8 @@ export const bulkGenerateCertificates = async (req, res) => {
       return res.status(404).json({ message: 'Event not found.' });
     }
 
-    if (event.symposium.organizerId !== req.user.id && req.user.role !== 'ADMIN') {
+    const isAuthorized = req.user.role === 'ADMIN' || event.symposium.organizerId === req.user.id || (req.user.college && event.symposium.college && req.user.college.toLowerCase().includes(event.symposium.college.toLowerCase()));
+    if (!isAuthorized) {
       return res.status(403).json({ message: 'Not authorized to issue certificates for this event.' });
     }
 

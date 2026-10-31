@@ -57,9 +57,20 @@ export const getSymposiumById = async (req, res) => {
 
 export const getMySymposiums = async (req, res) => {
   try {
-    const organizerId = req.user.id;
+    const where = {};
+    if (req.user.role === 'ADMIN') {
+      // Admin sees all
+    } else if (req.user.college) {
+      where.OR = [
+        { organizerId: req.user.id },
+        { college: { contains: req.user.college, mode: 'insensitive' } },
+      ];
+    } else {
+      where.organizerId = req.user.id;
+    }
+
     const symposiums = await prisma.symposium.findMany({
-      where: { organizerId },
+      where,
       include: {
         events: true,
       },

@@ -21,6 +21,7 @@ import {
   Tag,
   IndianRupee,
   MapPin,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function OrganizerStudio() {
@@ -36,6 +37,7 @@ export default function OrganizerStudio() {
   const [attendanceEventId, setAttendanceEventId] = useState(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [isBulkPending, setIsBulkPending] = useState(false);
+  const [manualMarkLoadingId, setManualMarkLoadingId] = useState(null);
 
   const [templateForm, setTemplateForm] = useState({
     title: 'Certificate of Participation',
@@ -109,11 +111,14 @@ export default function OrganizerStudio() {
   useEffect(() => { if (selectedEventId) fetchEventAttendance(selectedEventId); }, [selectedEventId]);
 
   const handleManualAttendance = async (registrationId) => {
+    setManualMarkLoadingId(registrationId);
     try {
       await api.post('/attendance/manual', { registrationId });
-      fetchEventAttendance(selectedEventId);
+      await fetchEventAttendance(selectedEventId);
     } catch (err) {
       alert(err.response?.data?.message || 'Error marking manual attendance.');
+    } finally {
+      setManualMarkLoadingId(null);
     }
   };
 
@@ -195,6 +200,14 @@ export default function OrganizerStudio() {
   const allEventsList = symposiums.flatMap((s) =>
     (s.events || []).map((e) => ({ ...e, symposiumTitle: s.title }))
   );
+
+  useEffect(() => {
+    if (!selectedEventId && allEventsList.length > 0) {
+      setSelectedEventId(allEventsList[0].id);
+    }
+  }, [allEventsList, selectedEventId]);
+
+  const selectedEvent = allEventsList.find((e) => e.id === selectedEventId);
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -334,109 +347,178 @@ export default function OrganizerStudio() {
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {/* Event Selector */}
           <div className="glass-card">
-            <label className="form-label" style={{ marginBottom: '0.5rem' }}>
-              Select Event for Attendance Tracking & QR Scanning
-            </label>
-            <select
-              className="form-control"
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-            >
-              {allEventsList.map((evt) => (
-                <option key={evt.id} value={evt.id}>
-                  {evt.symposiumTitle} → {evt.title} ({evt.category})
-                </option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ flex: '1 1 320px' }}>
+                <label className="form-label" style={{ marginBottom: '0.45rem', fontWeight: 700, color: 'var(--text-bright)' }}>
+                  Select Event for Attendance Tracking & QR Scanning
+                </label>
+                <select
+                  className="form-control"
+                  value={selectedEventId}
+                  onChange={(e) => setSelectedEventId(e.target.value)}
+                  disabled={allEventsList.length === 0}
+                >
+                  {allEventsList.length === 0 && (
+                    <option value="">No events available in your symposiums</option>
+                  )}
+                  {allEventsList.map((evt) => (
+                    <option key={evt.id} value={evt.id}>
+                      {evt.symposiumTitle} → {evt.title} ({evt.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedEvent && (
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Symposium: <strong style={{ color: 'var(--text-bright)' }}>{selectedEvent.symposiumTitle}</strong>
+                  </span>
+                  <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>
+                    {selectedEvent.category}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Camera & Manual QR Scanner */}
           <AttendanceScanner
             eventId={selectedEventId}
-            eventTitle={allEventsList.find((e) => e.id === selectedEventId)?.title}
+            eventTitle={selectedEvent?.title}
+            onAttendanceRecorded={() => fetchEventAttendance(selectedEventId)}
           />
 
-          {/* Attendance Roster */}
-          {attendanceEventId === selectedEventId && attendanceData && (
-            <div className="glass-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: 700 }}>Participant Roster</h3>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    Confirmed: <strong style={{ color: 'var(--text-bright)' }}>{attendanceData.stats.totalConfirmed}</strong>
-                    <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>•</span>
-                    Attended: <strong style={{ color: 'var(--accent-emerald)' }}>{attendanceData.stats.totalAttended}</strong>
-                    <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>•</span>
-                    Rate: <strong>{attendanceData.stats.attendanceRate}</strong>
-                  </p>
-                </div>
+          {/* Attendance Roster — DISPLAYED AT ALL TIMES */}
+          <div className="glass-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-bright)' }}>
+                  Participant Roster {selectedEvent ? `— ${selectedEvent.title}` : ''}
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  {attendanceData?.stats ? (
+                    <>
+                      Confirmed: <strong style={{ color: 'var(--text-bright)' }}>{attendanceData.stats.totalConfirmed}</strong>
+                      <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>•</span>
+                      Attended: <strong style={{ color: 'var(--accent-emerald)' }}>{attendanceData.stats.totalAttended}</strong>
+                      <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>•</span>
+                      Rate: <strong style={{ color: 'var(--primary)' }}>{attendanceData.stats.attendanceRate}</strong>
+                    </>
+                  ) : (
+                    'Select an event to view verified attendees and live attendance counts.'
+                  )}
+                </p>
+              </div>
 
-                {attendanceEventId === selectedEventId && attendanceData?.stats?.totalAttended > 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {selectedEventId && (
+                  <button
+                    onClick={() => fetchEventAttendance(selectedEventId)}
+                    className="btn btn-secondary btn-sm"
+                    disabled={attendanceLoading}
+                    title="Refresh roster"
+                    style={{ gap: '5px' }}
+                  >
+                    <RefreshCw size={13} className={attendanceLoading ? 'animate-spin' : ''} />
+                    Refresh
+                  </button>
+                )}
+
+                {attendanceData?.stats?.totalAttended > 0 && (
                   <button
                     onClick={handleBulkGenerateCertificates}
                     className="btn btn-primary btn-sm"
                     style={{ gap: '6px' }}
                     disabled={isBulkPending}
                   >
-                    <Award size={14} /> {isBulkPending ? 'Issuing…' : `Issue Certificates to All Attended (${attendanceData.stats.totalAttended})`}
+                    <Award size={14} /> {isBulkPending ? 'Issuing…' : `Issue Certificates (${attendanceData.stats.totalAttended})`}
                   </button>
                 )}
               </div>
-
-              {attendanceData.registrations.length === 0 ? (
-                <p style={{ color: 'var(--text-dim)', fontSize: '0.88rem', fontStyle: 'italic' }}>
-                  No confirmed registrations found for this event yet.
-                </p>
-              ) : (
-                <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Participant</th>
-                        <th>Contact & College</th>
-                        <th>Ticket ID</th>
-                        <th>Payment</th>
-                        <th>Attendance</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attendanceData.registrations.map((reg) => {
-                        const isAttended = Boolean(reg.attendance);
-                        return (
-                          <tr key={reg.id}>
-                            <td style={{ fontWeight: 600, color: 'var(--text-bright)' }}>{reg.user?.name}</td>
-                            <td>
-                              <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{reg.user?.email}</span>
-                              <br />
-                              <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>{reg.user?.college}</span>
-                            </td>
-                            <td><code>{reg.ticketCode}</code></td>
-                            <td>
-                              <span className={`status-chip ${reg.paymentStatus === 'COMPLETED' || reg.paymentStatus === 'EXEMPT' ? 'success' : 'warning'}`}>
-                                {reg.paymentStatus}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={`status-chip ${isAttended ? 'success' : 'danger'}`}>
-                                {isAttended ? `✓ ${reg.attendance.method}` : 'ABSENT'}
-                              </span>
-                            </td>
-                            <td>
-                              {!isAttended && (
-                                <button onClick={() => handleManualAttendance(reg.id)} className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem' }}>
-                                  <CheckCircle size={12} /> Mark
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
-          )}
+
+            {/* Roster Content */}
+            {!selectedEventId || allEventsList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim)' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem' }}>No event selected or no events created yet.</p>
+                <p style={{ margin: '6px 0 0', fontSize: '0.82rem' }}>Please create a symposium event in the first tab or select one above.</p>
+              </div>
+            ) : attendanceLoading && !attendanceData ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '3.5rem', gap: '0.75rem', color: 'var(--text-muted)' }}>
+                <div className="spinner"></div>
+                <span style={{ fontSize: '0.9rem' }}>Loading attendees for {selectedEvent?.title || 'event'}...</span>
+              </div>
+            ) : !attendanceData || attendanceData.registrations?.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-dim)' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>No confirmed registrations found for "{selectedEvent?.title}".</p>
+                <p style={{ margin: '6px 0 0', fontSize: '0.82rem' }}>Participants who register will automatically appear in this roster.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Participant</th>
+                      <th>Contact & College</th>
+                      <th>Ticket ID</th>
+                      <th>Payment</th>
+                      <th>Attendance</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceData.registrations.map((reg) => {
+                      const isAttended = Boolean(reg.attendance);
+                      const isRowLoading = manualMarkLoadingId === reg.id;
+                      return (
+                        <tr key={reg.id}>
+                          <td style={{ fontWeight: 600, color: 'var(--text-bright)' }}>{reg.user?.name}</td>
+                          <td>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{reg.user?.email}</span>
+                            <br />
+                            <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>{reg.user?.college || 'N/A'}</span>
+                          </td>
+                          <td><code>{reg.ticketCode}</code></td>
+                          <td>
+                            <span className={`status-chip ${reg.paymentStatus === 'COMPLETED' || reg.paymentStatus === 'EXEMPT' ? 'success' : 'warning'}`}>
+                              {reg.paymentStatus}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`status-chip ${isAttended ? 'success' : 'danger'}`}>
+                              {isAttended ? `✓ ${reg.attendance.method}` : 'ABSENT'}
+                            </span>
+                          </td>
+                          <td>
+                            {!isAttended ? (
+                              <button
+                                onClick={() => handleManualAttendance(reg.id)}
+                                className="btn btn-secondary btn-sm"
+                                disabled={isRowLoading}
+                                style={{ fontSize: '0.78rem', gap: '4px' }}
+                              >
+                                {isRowLoading ? (
+                                  <div className="spinner" style={{ width: '12px', height: '12px', borderWidth: '2px' }}></div>
+                                ) : (
+                                  <CheckCircle size={12} />
+                                )}
+                                Mark
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)', fontWeight: 600 }}>
+                                Verified
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -3,7 +3,7 @@ import api from '../services/api';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { QrCode, CheckCircle2, AlertTriangle, Search, UserCheck, Camera, X } from 'lucide-react';
 
-export default function AttendanceScanner({ eventId, eventTitle }) {
+export default function AttendanceScanner({ eventId, eventTitle, onAttendanceRecorded }) {
   const [manualCode, setManualCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null);
@@ -37,6 +37,9 @@ export default function AttendanceScanner({ eventId, eventTitle }) {
         event: res.data.event,
       });
       setManualCode('');
+      if (onAttendanceRecorded) {
+        onAttendanceRecorded(res.data);
+      }
     } catch (err) {
       setScanResult({
         success: false,
